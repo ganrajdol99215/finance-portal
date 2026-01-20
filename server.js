@@ -1,3 +1,4 @@
+const snow = require('./snowflake');
 const express = require('express');
 const bodyParser = require('body-parser');
 const db = require('./db');
@@ -66,3 +67,39 @@ app.post("/submit", async (req, res) => {
 app.listen(3000, () =>
   console.log("Server running on http://localhost:3000")
 );
+app.get("/count-pre-risk", async (req,res)=>{
+
+ const data = await snow.query(`
+   SELECT pre_risk, COUNT(*) as total
+   FROM FINANCE.RAW.INSTRUMENT_MASTER_VIEW
+   GROUP BY pre_risk
+ `);
+
+ res.json(data);
+
+});
+app.get("/latest", async (req,res)=>{
+
+ const data = await snow.query(`
+   SELECT *
+   FROM FINANCE.RAW.INSTRUMENT_MASTER_VIEW
+   ORDER BY universe_id DESC
+   LIMIT 10
+ `);
+
+ res.json(data);
+
+});
+app.get("/search", async (req,res)=>{
+
+ const c = req.query.cusip;
+
+ const data = await snow.query(`
+   SELECT *
+   FROM FINANCE.RAW.INSTRUMENT_MASTER_VIEW
+   WHERE cusip = '${c}'
+ `);
+
+ res.json(data[0] || {});
+
+});
