@@ -1,0 +1,117 @@
+<h2>Snowflake Dashboard</h2>
+
+<!-- SEARCH SECTION -->
+<div>
+  <input id="cusipBox" placeholder="Search by CUSIP"/>
+  <button onclick="search()">Search</button>
+</div>
+
+<hr/>
+
+<!-- COUNT BY PRE RISK -->
+<h3>Count by Pre-Risk</h3>
+<table border="1">
+  <thead>
+    <tr>
+      <th>Pre Risk</th>
+      <th>Total</th>
+    </tr>
+  </thead>
+  <tbody id="countData"></tbody>
+</table>
+
+<hr/>
+
+<!-- LATEST 10 -->
+<h3>Latest 10 Records</h3>
+
+<table border="1">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Pre Risk</th>
+      <th>On Risk</th>
+      <th>CUSIP</th>
+      <th>ISIN</th>
+    </tr>
+  </thead>
+
+  <tbody id="latest"></tbody>
+</table>
+
+<hr/>
+
+<!-- SEARCH RESULT -->
+<h3>Search Result</h3>
+<table border="1">
+  <tbody id="search"></tbody>
+</table>
+
+<script>
+
+// Load all widgets
+loadCount();
+loadLatest();
+
+function loadCount(){
+ fetch('/count-pre-risk')
+ .then(r=>r.json())
+ .then(list=>{
+
+   let h="";
+   list.forEach(x=>{
+     h += `<tr>
+       <td>${x.PRE_RISK}</td>
+       <td>${x.TOTAL}</td>
+     </tr>`;
+   });
+
+   document.getElementById("countData").innerHTML = h;
+ });
+}
+
+
+function loadLatest(){
+ fetch('/latest')
+ .then(r=>r.json())
+ .then(list=>{
+
+   let h="";
+   list.forEach(x=>{
+     h += `<tr>
+       <td>${x.UNIVERSE_ID}</td>
+       <td>${x.PRE_RISK}</td>
+       <td>${x.ON_RISK}</td>
+       <td>${x.CUSIP}</td>
+       <td>${x.ISIN}</td>
+     </tr>`;
+   });
+
+   document.getElementById("latest").innerHTML = h;
+ });
+}
+
+
+function search(){
+
+ const c = document.getElementById("cusipBox").value;
+
+ fetch('/search?cusip='+c)
+ .then(r=>r.json())
+ .then(x=>{
+
+   let h = `<tr>
+     <td>${x.UNIVERSE_ID}</td>
+     <td>${x.PRE_RISK}</td>
+     <td>${x.ON_RISK}</td>
+     <td>${x.CUSIP}</td>
+     <td>${x.ISIN}</td>
+   </tr>`;
+
+   document.getElementById("search").innerHTML = h;
+
+ });
+
+}
+
+</script>
