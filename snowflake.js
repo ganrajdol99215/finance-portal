@@ -3,7 +3,7 @@ const snowflake = require('snowflake-sdk');
 const connection = snowflake.createConnection({
   account: "SCGDXMY-JK93958",
   username: "GANRAJDOL77",
-  password: "YOUR_SNOWFLAKE_PASSWORD",
+  password: "9921569869",
   database: "FINANCE",
   schema: "RAW",
   warehouse: "ETL_WH",   // or COMPUTE_WH if ETL_WH not created
