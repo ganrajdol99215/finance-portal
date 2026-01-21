@@ -6,7 +6,7 @@ const connection = snowflake.createConnection({
   password: "9921569869",
   database: "FINANCE",
   schema: "RAW",
-  warehouse: "ETL_WH",   // or COMPUTE_WH if ETL_WH not created
+  warehouse: "COMPUTE_WH",   // or COMPUTE_WH if ETL_WH not created
   role: "ACCOUNTADMIN"
 });
 
