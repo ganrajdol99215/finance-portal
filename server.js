@@ -1,105 +1,107 @@
-const snow = require('./snowflake');
-const express = require('express');
-const bodyParser = require('body-parser');
-const db = require('./db');
-const upload = require('./s3');
-const path = require('path');
+const express = require("express");
+const path = require("path");
+const bodyParser = require("body-parser");
+
+const db = require("./db");      // RDS (PostgreSQL)
+const uploadToS3 = require("./s3"); // S3 uploader
 
 const app = express();
+const PORT = 3000;
 
+/* -------------------- MIDDLEWARE -------------------- */
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static('public'));
+app.use(bodyParser.json());
 
+// static files (CSS, JS, images)
+app.use(express.static(path.join(__dirname, "public")));
 
-// Load UI
+/* -------------------- ROUTES -------------------- */
+
+// Home page
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, 'views/index.html'));
+  res.sendFile(path.join(__dirname, "views", "index.html"));
 });
 
+// Dashboard page
+app.get("/dashboard", (req, res) => {
+  res.sendFile(path.join(__dirname, "views", "dashboard.html"));
+});
 
-// Submit API
+// Form submit → RDS → S3
 app.post("/submit", async (req, res) => {
+  const { pre_risk, on_risk, cusip, isin } = req.body;
 
   try {
-
-    const { pre_risk, on_risk, cusip, isin } = req.body;
-
-    // 1. Insert to RDS
+    // 1️⃣ Insert into RDS
     const result = await db.query(
       `INSERT INTO instrument_master
-      (pre_risk, on_risk, cusip, isin)
-      VALUES ($1,$2,$3,$4)
-      RETURNING universe_id`,
+       (pre_risk, on_risk, cusip, isin)
+       VALUES ($1, $2, $3, $4)
+       RETURNING universe_id`,
       [pre_risk, on_risk, cusip, isin]
     );
 
-    const id = result.rows[0].universe_id;
+    const universeId = result.rows[0].universe_id;
 
+    // 2️⃣ Upload to S3 (folder = universe_id)
+    await uploadToS3(`${universeId}/pre_risk.csv`, `universe_id,pre_risk\n${universeId},${pre_risk}`);
+    await uploadToS3(`${universeId}/on_risk.csv`, `universe_id,on_risk\n${universeId},${on_risk}`);
+    await uploadToS3(`${universeId}/cusip.csv`, `universe_id,cusip\n${universeId},${cusip}`);
+    await uploadToS3(`${universeId}/isin.csv`, `universe_id,isin\n${universeId},${isin}`);
 
-    // 2. Upload to S3 in folder = universe id
-
-    await upload(`${id}/pre_risk.csv`,
-      `universe_id,pre_risk\n${id},${pre_risk}`);
-
-    await upload(`${id}/on_risk.csv`,
-      `universe_id,on_risk\n${id},${on_risk}`);
-
-    await upload(`${id}/cusip.csv`,
-      `universe_id,cusip\n${id},${cusip}`);
-
-    await upload(`${id}/isin.csv`,
-      `universe_id,isin\n${id},${isin}`);
-
-
-    res.send(`
-      <h3>Saved Successfully</h3>
-      <b>Universe ID: ${id}</b>
-      <br/><a href="/">Go Back</a>
-    `);
+    res.json({
+      status: "success",
+      universe_id: universeId
+    });
 
   } catch (err) {
-    res.send("Error: " + err.message);
+    console.error("Submit error:", err);
+    res.status(500).json({ error: "Failed to process request" });
   }
-
 });
 
+/* -------------------- API FOR DASHBOARD -------------------- */
 
-app.listen(3000, () =>
-  console.log("Server running on http://localhost:3000")
-);
-app.get("/count-pre-risk", async (req,res)=>{
-
- const data = await snow.query(`
-   SELECT pre_risk, COUNT(*) as total
-   FROM FINANCE.RAW.INSTRUMENT_MASTER_VIEW
-   GROUP BY pre_risk
- `);
-
- res.json(data);
-
+// Latest 10 records
+app.get("/api/latest", async (req, res) => {
+  try {
+    const result = await db.query(
+      "SELECT * FROM instrument_master ORDER BY created_at DESC LIMIT 10"
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch data" });
+  }
 });
-app.get("/latest", async (req,res)=>{
 
- const data = await snow.query(`
-   SELECT *
-   FROM FINANCE.RAW.INSTRUMENT_MASTER_VIEW
-   ORDER BY universe_id DESC
-   LIMIT 10
- `);
-
- res.json(data);
-
+// Count by pre_risk
+app.get("/api/count-pre-risk", async (req, res) => {
+  try {
+    const result = await db.query(
+      "SELECT pre_risk, COUNT(*) FROM instrument_master GROUP BY pre_risk"
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch counts" });
+  }
 });
-app.get("/search", async (req,res)=>{
 
- const c = req.query.cusip;
+// Search by CUSIP
+app.get("/api/search", async (req, res) => {
+  const { cusip } = req.query;
+  try {
+    const result = await db.query(
+      "SELECT * FROM instrument_master WHERE cusip = $1",
+      [cusip]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: "Search failed" });
+  }
+});
 
- const data = await snow.query(`
-   SELECT *
-   FROM FINANCE.RAW.INSTRUMENT_MASTER_VIEW
-   WHERE cusip = '${c}'
- `);
+/* -------------------- START SERVER -------------------- */
 
- res.json(data[0] || {});
-
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
