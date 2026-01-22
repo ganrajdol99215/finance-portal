@@ -34,7 +34,7 @@ app.post("/submit", async (req, res) => {
   try {
     // 1️⃣ Insert into RDS
     const result = await db.query(
-      `INSERT INTO instrument_master
+      `INSERT INTO oc_details
        (pre_risk, on_risk, cusip, isin)
        VALUES ($1, $2, $3, $4)
        RETURNING universe_id`,
