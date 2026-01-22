@@ -30,6 +30,11 @@ app.get("/dashboard", (req, res) => {
 // Form submit → RDS → S3
 app.post("/submit", async (req, res) => {
   const { pre_risk, on_risk, cusip, isin } = req.body;
+  
+app.get("/records", (req, res) => {
+  res.sendFile(path.join(__dirname, "views", "records.html"));
+});
+  
 
   try {
     // 1️⃣ Insert into RDS
