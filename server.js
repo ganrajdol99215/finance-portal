@@ -60,6 +60,10 @@ app.post("/submit", async (req, res) => {
   }
 });
 
+app.get("/records", (req, res) => {
+  res.sendFile(path.join(__dirname, "views", "records.html"));
+});
+
 /* -------------------- API FOR DASHBOARD -------------------- */
 
 // Latest 10 records
