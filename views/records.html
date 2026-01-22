@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>RDS Records</title>
+  <style>
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #999;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>RDS Stored Data (oc_details)</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Universe ID</th>
+        <th>Pre Risk</th>
+        <th>On Risk</th>
+        <th>CUSIP</th>
+        <th>ISIN</th>
+        <th>Created At</th>
+      </tr>
+    </thead>
+    <tbody id="table-body"></tbody>
+  </table>
+
+  <br>
+  <a href="/">⬅ Back</a>
+
+  <script>
+    fetch("/api/records")
+      .then(res => res.json())
+      .then(data => {
+        const tbody = document.getElementById("table-body");
+        data.forEach(row => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${row.universe_id}</td>
+            <td>${row.pre_risk}</td>
+            <td>${row.on_risk}</td>
+            <td>${row.cusip}</td>
+            <td>${row.isin}</td>
+            <td>${row.created_at}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      });
+  </script>
+</body>
+</html>
