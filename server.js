@@ -66,10 +66,11 @@ app.post("/submit", async (req, res) => {
 app.get("/api/latest", async (req, res) => {
   try {
     const result = await db.query(
-      "SELECT * FROM instrument_master ORDER BY created_at DESC LIMIT 10"
+      "SELECT * FROM oc_details ORDER BY created_at DESC LIMIT 10"
     );
     res.json(result.rows);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Failed to fetch data" });
   }
 });
@@ -78,10 +79,11 @@ app.get("/api/latest", async (req, res) => {
 app.get("/api/count-pre-risk", async (req, res) => {
   try {
     const result = await db.query(
-      "SELECT pre_risk, COUNT(*) FROM instrument_master GROUP BY pre_risk"
+      "SELECT pre_risk, COUNT(*) FROM oc_details GROUP BY pre_risk"
     );
     res.json(result.rows);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Failed to fetch counts" });
   }
 });
@@ -91,14 +93,16 @@ app.get("/api/search", async (req, res) => {
   const { cusip } = req.query;
   try {
     const result = await db.query(
-      "SELECT * FROM instrument_master WHERE cusip = $1",
+      "SELECT * FROM oc_details WHERE cusip = $1",
       [cusip]
     );
     res.json(result.rows);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Search failed" });
   }
 });
+
 
 /* -------------------- START SERVER -------------------- */
 
