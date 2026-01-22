@@ -1,19 +1,16 @@
-const AWS = require('aws-sdk');
+const AWS = require("aws-sdk");
 
-AWS.config.update({
+const s3 = new AWS.S3({
   region: "us-east-1"
 });
 
-const s3 = new AWS.S3();
+const BUCKET = "finance-data-ganraj";
 
-async function upload(path, data) {
-
-  await s3.putObject({
-    Bucket: "finance-data",
-    Key: path,
-    Body: data
+module.exports = async (key, content) => {
+  return s3.putObject({
+    Bucket: BUCKET,
+    Key: key,
+    Body: content
   }).promise();
+};
 
-}
-
-module.exports = upload;
