@@ -2,7 +2,7 @@ const express = require("express");
 const path = require("path");
 const bodyParser = require("body-parser");
 
-const db = require("./db");      // RDS (PostgreSQL)
+const db = require("./db");         // RDS (PostgreSQL)
 const uploadToS3 = require("./s3"); // S3 uploader
 
 const app = express();
@@ -15,7 +15,7 @@ app.use(bodyParser.json());
 // static files (CSS, JS, images)
 app.use(express.static(path.join(__dirname, "public")));
 
-/* -------------------- ROUTES -------------------- */
+/* -------------------- PAGES -------------------- */
 
 // Home page
 app.get("/", (req, res) => {
@@ -27,14 +27,15 @@ app.get("/dashboard", (req, res) => {
   res.sendFile(path.join(__dirname, "views", "dashboard.html"));
 });
 
-// Form submit → RDS → S3
-app.post("/submit", async (req, res) => {
-  const { pre_risk, on_risk, cusip, isin } = req.body;
-  
+// Records page (RDS visualization)
 app.get("/records", (req, res) => {
   res.sendFile(path.join(__dirname, "views", "records.html"));
 });
-  
+
+/* -------------------- FORM SUBMIT (DO NOT TOUCH) -------------------- */
+
+app.post("/submit", async (req, res) => {
+  const { pre_risk, on_risk, cusip, isin } = req.body;
 
   try {
     // 1️⃣ Insert into RDS
@@ -49,10 +50,25 @@ app.get("/records", (req, res) => {
     const universeId = result.rows[0].universe_id;
 
     // 2️⃣ Upload to S3 (folder = universe_id)
-    await uploadToS3(`${universeId}/pre_risk.csv`, `universe_id,pre_risk\n${universeId},${pre_risk}`);
-    await uploadToS3(`${universeId}/on_risk.csv`, `universe_id,on_risk\n${universeId},${on_risk}`);
-    await uploadToS3(`${universeId}/cusip.csv`, `universe_id,cusip\n${universeId},${cusip}`);
-    await uploadToS3(`${universeId}/isin.csv`, `universe_id,isin\n${universeId},${isin}`);
+    await uploadToS3(
+      `${universeId}/pre_risk.csv`,
+      `universe_id,pre_risk\n${universeId},${pre_risk}`
+    );
+
+    await uploadToS3(
+      `${universeId}/on_risk.csv`,
+      `universe_id,on_risk\n${universeId},${on_risk}`
+    );
+
+    await uploadToS3(
+      `${universeId}/cusip.csv`,
+      `universe_id,cusip\n${universeId},${cusip}`
+    );
+
+    await uploadToS3(
+      `${universeId}/isin.csv`,
+      `universe_id,isin\n${universeId},${isin}`
+    );
 
     res.json({
       status: "success",
@@ -65,13 +81,22 @@ app.get("/records", (req, res) => {
   }
 });
 
-app.get("/records", (req, res) => {
-  res.sendFile(path.join(__dirname, "views", "records.html"));
+/* -------------------- APIs (READ-ONLY) -------------------- */
+
+// All RDS records (for records.html)
+app.get("/api/records", async (req, res) => {
+  try {
+    const result = await db.query(
+      "SELECT * FROM oc_details ORDER BY universe_id DESC"
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch RDS data" });
+  }
 });
 
-/* -------------------- API FOR DASHBOARD -------------------- */
-
-// Latest 10 records
+// Latest 10 records (dashboard)
 app.get("/api/latest", async (req, res) => {
   try {
     const result = await db.query(
@@ -84,7 +109,7 @@ app.get("/api/latest", async (req, res) => {
   }
 });
 
-// Count by pre_risk
+// Count by pre_risk (dashboard)
 app.get("/api/count-pre-risk", async (req, res) => {
   try {
     const result = await db.query(
@@ -100,6 +125,7 @@ app.get("/api/count-pre-risk", async (req, res) => {
 // Search by CUSIP
 app.get("/api/search", async (req, res) => {
   const { cusip } = req.query;
+
   try {
     const result = await db.query(
       "SELECT * FROM oc_details WHERE cusip = $1",
@@ -111,7 +137,6 @@ app.get("/api/search", async (req, res) => {
     res.status(500).json({ error: "Search failed" });
   }
 });
-
 
 /* -------------------- START SERVER -------------------- */
 
