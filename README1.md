@@ -46,6 +46,8 @@ Snowsight Dashboard
 Inbound rules:
 - SSH (22) → My IP
 - Custom TCP (3000) → 0.0.0.0/0
+- HTTP (80) → 0.0.0.0/0  ✅ (for Nginx)
+- HTTPS (443) → 0.0.0.0/0 ✅ (optional for SSL)
 
 ### 3.3 Connect to EC2
 ```bash
@@ -352,3 +354,118 @@ SELECT * FROM FINANCE.RAW.OC_DETAILS_VIEW ORDER BY universe_id DESC;
 
 ## 15) Interview Summary
 Transactional data is stored in PostgreSQL (RDS) and synchronized to S3, then ingested into Snowflake for analytics and visualized through dashboards.
+
+---
+
+## 16) Nginx Reverse Proxy (Hide port :3000)
+
+### Why Nginx?
+Currently the app runs on:
+- http://<EC2_PUBLIC_IP>:3000
+
+After Nginx reverse proxy setup:
+- http://<EC2_PUBLIC_IP> ✅ (no port)
+- http://yourdomain.com ✅
+
+---
+
+### 16.1 Install Nginx
+```bash
+sudo apt update -y
+sudo apt install -y nginx
+sudo systemctl enable nginx
+sudo systemctl start nginx
+sudo systemctl status nginx
+```
+
+---
+
+### 16.2 Create Nginx configuration
+Create file:
+```bash
+sudo nano /etc/nginx/sites-available/finance-portal
+```
+
+Paste below config:
+```nginx
+server {
+    listen 80;
+    server_name _;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+---
+
+### 16.3 Enable site and reload Nginx
+```bash
+sudo ln -s /etc/nginx/sites-available/finance-portal /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+---
+
+### 16.4 Verify
+Now open:
+- http://<EC2_PUBLIC_IP>
+
+---
+
+### 16.5 PM2 reminder
+Node.js should run in background using PM2:
+```bash
+pm2 status
+pm2 restart finance-portal
+pm2 save
+```
+
+---
+
+## 17) (Optional) Connect Domain
+
+1. Go to domain DNS settings
+2. Create **A Record**:
+   - Name: @ or www
+   - Value: <EC2_PUBLIC_IP>
+
+Update Nginx config:
+```bash
+sudo nano /etc/nginx/sites-available/finance-portal
+```
+
+Change:
+```nginx
+server_name yourdomain.com www.yourdomain.com;
+```
+
+Reload:
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+---
+
+## 18) (Optional) Enable HTTPS (SSL)
+Install certbot:
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+```
+
+Run SSL:
+```bash
+sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+```
