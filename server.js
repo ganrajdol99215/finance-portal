@@ -38,14 +38,20 @@ app.post("/submit", async (req, res) => {
   const { pre_risk, on_risk, cusip, isin } = req.body;
 
   try {
-    // 1️⃣ Insert into RDS
+    // ✅ RDS latency start
+    const t0 = Date.now();
+
     const result = await db.query(
       `INSERT INTO oc_details
        (pre_risk, on_risk, cusip, isin)
        VALUES ($1, $2, $3, $4)
-       RETURNING universe_id`,
+       RETURNING universe_id, created_at`,
       [pre_risk, on_risk, cusip, isin]
     );
+
+    // ✅ RDS latency end
+    const t1 = Date.now();
+    console.log("RDS INSERT latency(ms):", t1 - t0);
 
     const universeId = result.rows[0].universe_id;
 
